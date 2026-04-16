@@ -1,0 +1,1074 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>開発ポイント計算ツール</title>
+<script src="members_data.js"></script>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: 'メイリオ', Meiryo, 'MS Gothic', sans-serif;
+  background: #eef2f7;
+  color: #333;
+  font-size: 15px;
+}
+.container { max-width: 700px; margin: 28px auto 60px; padding: 0 16px; }
+.header {
+  background: linear-gradient(135deg, #1a4f8a, #2e7bbf);
+  color: white; padding: 18px 24px; border-radius: 10px 10px 0 0;
+}
+.header h1 { font-size: 19px; font-weight: bold; }
+.header p  { font-size: 12px; margin-top: 4px; opacity: 0.8; }
+.card {
+  background: white; border-radius: 0 0 10px 10px;
+  padding: 26px 28px 24px; box-shadow: 0 3px 14px rgba(0,0,0,0.1);
+}
+
+/* Step label */
+.step-label {
+  font-size: 13px; font-weight: bold; color: #1a4f8a;
+  background: #e8f0fb; border-left: 4px solid #2e7bbf;
+  padding: 6px 12px; border-radius: 0 4px 4px 0; margin-bottom: 14px;
+}
+
+/* Form */
+.form-group { margin-bottom: 16px; }
+label { display: block; font-weight: bold; font-size: 13px; color: #555; margin-bottom: 6px; }
+select, input[type="text"], input[type="number"] {
+  width: 100%; padding: 9px 12px; border: 1px solid #ccc;
+  border-radius: 6px; font-size: 15px; font-family: inherit;
+  background: #fafafa; transition: border-color .15s;
+}
+select:focus, input:focus {
+  outline: none; border-color: #2e7bbf; background: white;
+  box-shadow: 0 0 0 3px rgba(46,123,191,0.12);
+}
+select:disabled {
+  background: #eef4fd; color: #1a4f8a; border-color: #b0c8e8;
+  cursor: default; opacity: 1; font-weight: bold;
+}
+.note { font-size: 12px; color: #888; margin-top: 4px; }
+.divider { border: none; border-top: 1px solid #eee; margin: 20px 0; }
+.row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+
+/* ======== 紹介者検索 ======== */
+.search-wrap { position: relative; }
+#search-input { padding-right: 36px; }
+.search-clear {
+  position: absolute; right: 10px; top: 50%; transform: translateY(-50%);
+  background: none; border: none; font-size: 18px; color: #aaa;
+  cursor: pointer; line-height: 1;
+}
+.search-clear:hover { color: #666; }
+
+.search-results {
+  position: absolute; top: 100%; left: 0; right: 0; z-index: 100;
+  background: white; border: 1px solid #ccc; border-top: none;
+  border-radius: 0 0 6px 6px; max-height: 280px; overflow-y: auto;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+}
+.search-item {
+  padding: 9px 14px; cursor: pointer; border-bottom: 1px solid #f0f0f0;
+  display: flex; align-items: center; gap: 10px;
+}
+.search-item:hover { background: #f0f6ff; }
+.item-name { font-weight: bold; flex: 1; }
+.item-kubun {
+  font-size: 12px; color: white; padding: 2px 7px; border-radius: 10px;
+  background: #2e7bbf; white-space: nowrap;
+}
+.item-kubun.shibu { background: #2e7d32; }
+.item-kubun.other { background: #888; }
+.search-no-result { padding: 12px 14px; color: #999; font-size: 14px; }
+
+/* 紹介者ラジオ */
+.radio-group { display: flex; gap: 24px; margin-bottom: 10px; }
+.radio-label {
+  display: flex; align-items: center; gap: 8px;
+  cursor: pointer; font-size: 15px; font-weight: bold; color: #333;
+}
+.radio-label input[type="radio"] {
+  width: auto; cursor: pointer; accent-color: #1a4f8a;
+  width: 18px; height: 18px;
+}
+
+/* 選択済みメンバーカード */
+.member-card {
+  background: #f0f6ff; border: 1px solid #b0c8e8; border-radius: 8px;
+  padding: 12px 16px; margin-top: 10px;
+}
+.member-card-name { font-weight: bold; font-size: 16px; color: #1a4f8a; }
+.member-card-sub { font-size: 13px; color: #555; margin-top: 4px; }
+.member-card-sub.warn { color: #c62828; }
+.member-card-sub strong { color: #1a4f8a; }
+.member-card-sub.warn strong { color: #c62828; }
+.btn-clear-member {
+  font-size: 12px; color: #888; background: none; border: none;
+  cursor: pointer; margin-top: 6px; text-decoration: underline; padding: 0;
+  font-family: inherit;
+}
+
+/* データ未読み込み警告 */
+.warn-box {
+  background: #fff8e1; border: 1px solid #ffc107; border-radius: 8px;
+  padding: 12px 16px; font-size: 13px; color: #6d4c00; margin-bottom: 16px;
+}
+.warn-box strong { display: block; margin-bottom: 4px; }
+
+/* 更新日表示 */
+.data-info { font-size: 11px; color: #aaa; text-align: right; margin-bottom: 4px; }
+
+/* Result */
+.result-box {
+  margin-top: 22px; background: #eaf6ea; border: 2px solid #43a047;
+  border-radius: 10px; padding: 20px 24px 18px; text-align: center;
+}
+.result-label { font-size: 13px; color: #555; margin-bottom: 4px; }
+.result-referrer { font-size: 13px; color: #1a4f8a; margin-bottom: 8px; font-weight: bold; }
+.result-points { font-size: 48px; font-weight: bold; color: #2e7d32; letter-spacing: -1px; }
+.result-notes { margin-top: 14px; text-align: left; font-size: 13px; color: #555; list-style: none; }
+.result-notes li { padding: 3px 0 3px 16px; position: relative; }
+.result-notes li::before { content: '▶'; position: absolute; left: 0; font-size: 9px; top: 5px; color: #43a047; }
+.result-notes li.warn { color: #e65100; }
+.result-notes li.warn::before { content: '⚠'; font-size: 12px; top: 3px; color: #e65100; }
+
+.btn-reset {
+  margin-top: 16px; background: #1a4f8a; color: white; border: none;
+  padding: 9px 28px; border-radius: 6px; font-size: 14px; cursor: pointer; font-family: inherit;
+}
+.btn-reset:hover { background: #163f70; }
+.error-box {
+  margin-top: 16px; background: #fff3e0; border: 2px solid #ff9800;
+  border-radius: 8px; padding: 12px 16px; font-size: 14px; color: #bf360c;
+}
+.hidden { display: none !important; }
+</style>
+</head>
+<body>
+<div class="container">
+
+<div class="header">
+  <h1>開発ポイント計算ツール</h1>
+  <p>税率10%（2025.3.11現在）　※1名ずつ計算</p>
+</div>
+
+<div class="card">
+
+  <!-- ======== STEP 1: 紹介者検索 ======== -->
+  <div class="step-label">STEP 1 &nbsp; 紹介者を入力</div>
+
+  <!-- データ未読み込み警告 -->
+  <div id="no-data-warn" class="warn-box hidden">
+    <strong>⚠ 会員データが読み込まれていません</strong>
+    「データ更新.bat」をダブルクリックして members_data.js を生成してから、このページを開き直してください。
+  </div>
+
+  <div id="data-info" class="data-info hidden"></div>
+
+  <!-- 紹介者あり／なし選択 -->
+  <div class="form-group">
+    <label style="font-weight:bold;font-size:13px;color:#555;margin-bottom:8px;display:block;">紹介者はいますか？</label>
+    <div class="radio-group">
+      <label class="radio-label">
+        <input type="radio" name="ref-mode" id="ref-mode-iru" value="iru" onchange="onRefModeChange()" checked>
+        いる
+      </label>
+      <label class="radio-label">
+        <input type="radio" name="ref-mode" id="ref-mode-honbu" value="honbu" onchange="onRefModeChange()">
+        いない（本部直）
+      </label>
+    </div>
+  </div>
+
+  <!-- 検索ボックス -->
+  <div id="search-section" class="form-group">
+    <div class="search-wrap">
+      <input type="text" id="search-input"
+        placeholder="IDまたは名前で検索（例：0000022810 / 鳥居）"
+        oninput="onSearch()" autocomplete="off">
+      <button class="search-clear" onclick="clearSearch()" title="クリア">×</button>
+      <div id="search-results" class="search-results hidden"></div>
+    </div>
+  </div>
+
+  <!-- 選択済みメンバーカード -->
+  <div id="member-card" class="member-card hidden">
+    <div id="member-card-name" class="member-card-name"></div>
+    <div id="member-card-sub"  class="member-card-sub"></div>
+    <button class="btn-clear-member" onclick="clearMember()">クリアして再検索</button>
+  </div>
+
+  <hr class="divider">
+
+  <!-- ======== STEP 2: カテゴリ選択 ======== -->
+  <div class="step-label">STEP 2 &nbsp; カテゴリを選択</div>
+
+  <div class="form-group">
+    <select id="category" onchange="onCategoryChange()">
+      <option value="">-- 選択してください --</option>
+      <optgroup label="支部">
+        <option value="shibu">支部加盟</option>
+      </optgroup>
+      <optgroup label="FM検定">
+        <option value="fm_tsugaku">初級検定（自主開催）</option>
+        <option value="fm_shokai">初級検定（本部開催）</option>
+        <option value="fm_dvdweb">初級検定（WEB）</option>
+        <option value="fm_dvdprimary">FM検定 ｜ 初級（DVD・プライマリー受講済み）</option>
+        <option value="fm_re">初級検定（再受講）</option>
+        <option value="fm_nikkyu">FM検定 ｜ 二級</option>
+        <option value="fm_ikkyu">FM検定 ｜ 一級</option>
+      </optgroup>
+      <optgroup label="プライマリー">
+        <option value="primary">プライマリー</option>
+      </optgroup>
+      <optgroup label="健美食検定">
+        <option value="kenb_basic">健美食検定 ｜ Basic</option>
+        <option value="kenb_advance">健美食検定 ｜ Advance</option>
+      </optgroup>
+      <optgroup label="MANAキッチン・biz">
+        <option value="mana_kitchen">MANAキッチン 加入金</option>
+        <option value="biz_kanyukin">biz Member ｜ 加入金</option>
+        <option value="biz_nenkanen">biz Member ｜ 年間運営費</option>
+      </optgroup>
+      <optgroup label="各種セミナー">
+        <option value="sem_tori">鳥居 / 中野 / 食育セミナー</option>
+        <option value="sem_mikawa">御川先生セミナー</option>
+        <option value="sem_bizstage">ビジネスステージ</option>
+      </optgroup>
+      <optgroup label="食育講座">
+        <option value="shokuiku">食育講座</option>
+      </optgroup>
+      <optgroup label="岡山校（直紹介）">
+        <option value="okayama_tsugaku">岡山校 ｜ 初級（通学）</option>
+        <option value="okayama_shokai">岡山校 ｜ 初級（紹介）</option>
+        <option value="okayama_dvd">岡山校 ｜ 初級（DVD）</option>
+        <option value="okayama_nikkyu">岡山校 ｜ 二級</option>
+        <option value="okayama_ikkyu">岡山校 ｜ 一級</option>
+        <option value="okayama_shibu">岡山校 ｜ 支部</option>
+      </optgroup>
+    </select>
+  </div>
+
+  <!-- ======== STEP 3: 追加条件 ======== -->
+
+  <!-- 支部 -->
+  <div id="sec-shibu" class="hidden">
+    <div class="step-label">STEP 3 &nbsp; 追加条件</div>
+    <div class="form-group">
+      <label>プラン</label>
+      <select id="shibu-plan" onchange="calculate()">
+        <option value="normal">通常支部</option>
+        <option value="noBizStage">ビジネスステージアップ抜き</option>
+        <option value="bizSupport">ビジネスサポートプラン</option>
+        <option value="hojin">法人プラン</option>
+      </select>
+    </div>
+    <div id="shibu-count-wrap" class="form-group">
+      <label>支部数（紹介者の区分）</label>
+      <select id="shibu-count" onchange="onShibuCountChange()">
+        <option value="honbu">本部直</option>
+        <option value="lt5">5支部未満</option>
+        <option value="gte5">5支部以上</option>
+        <option value="gte10">10支部以上</option>
+      </select>
+    </div>
+    <div id="shibu-kaburi-wrap" class="form-group hidden">
+      <label>10支部かぶりがありますか？</label>
+      <select id="shibu-kaburi" onchange="calculate()">
+        <option value="no">なし</option>
+        <option value="yes">あり</option>
+      </select>
+    </div>
+    <div class="row2">
+      <div class="form-group">
+        <label>嶋中・遠藤さんがいますか？</label>
+        <select id="shibu-shimamoto" onchange="onShimamotoChange()">
+          <option value="no">いない</option>
+          <option value="yes">いる（-6P）</option>
+        </select>
+      </div>
+      <div id="shibu-2000p-wrap" class="form-group hidden">
+        <label>合計が2000P以上？</label>
+        <select id="shibu-2000p" onchange="calculate()">
+          <option value="no">2000P未満（-6P）</option>
+          <option value="yes">2000P以上（-8P）</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-group">
+      <label>学校ですか？</label>
+      <select id="shibu-gakko" onchange="calculate()">
+        <option value="no">いいえ</option>
+        <option value="yes">はい（-25P）</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- FM共通 -->
+  <div id="sec-fm" class="hidden">
+    <div class="step-label">STEP 3 &nbsp; 追加条件</div>
+    <div id="fm-referrer-wrap" class="form-group">
+      <label>紹介者の状況</label>
+      <select id="fm-referrer" onchange="onFmReferrerChange()">
+        <option value="honbu">本部直（紹介者なし）</option>
+        <option value="nashi">紹介者あり（上位なし）</option>
+        <option value="ari">紹介者あり（上位あり）</option>
+        <option value="jusu">10支部以上</option>
+      </select>
+    </div>
+    <div id="fm-kaburi-wrap" class="form-group hidden">
+      <label>10支部かぶりがありますか？</label>
+      <select id="fm-kaburi" onchange="calculate()">
+        <option value="no">なし</option>
+        <option value="yes">あり</option>
+      </select>
+    </div>
+    <div id="fm-jokyu-wrap" class="form-group hidden">
+      <label>上級講師（または他支部）が担当ですか？</label>
+      <select id="fm-jokyu" onchange="calculate()">
+        <option value="no">いいえ</option>
+        <option value="yes">はい（-1P）</option>
+      </select>
+    </div>
+    <div id="fm-bizexpert-wrap" class="form-group hidden">
+      <label>ビジネスエキスパートコースですか？</label>
+      <select id="fm-bizexpert" onchange="calculate()">
+        <option value="no">いいえ</option>
+        <option value="yes">はい（初級時 -1P）</option>
+      </select>
+    </div>
+    <div id="fm-jishu-wrap" class="form-group hidden">
+      <label>再受講費をいただいてますか？</label>
+      <select id="fm-jishu" onchange="calculate()">
+        <option value="no">いいえ（0P）</option>
+        <option value="yes">はい（0.25P）</option>
+      </select>
+    </div>
+    <div id="fm-okayama-wrap" class="form-group hidden">
+      <label>岡山校ですか？</label>
+      <select id="fm-okayama" onchange="calculate()">
+        <option value="no">いいえ</option>
+        <option value="yes">はい（-5.5P）</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- プライマリー -->
+  <div id="sec-primary" class="hidden">
+    <div class="step-label">STEP 3 &nbsp; 追加条件</div>
+    <div class="form-group">
+      <label>紹介支部の有無</label>
+      <select id="primary-ref" onchange="calculate()">
+        <option value="nashi">紹介支部なし（1.32P）</option>
+        <option value="ari">紹介支部あり（0.82P）</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- 健美食Basic -->
+  <div id="sec-kenb-basic" class="hidden">
+    <div class="step-label">STEP 3 &nbsp; 追加条件</div>
+    <div class="row2">
+      <div class="form-group">
+        <label>主催者</label>
+        <select id="kb-basic-org" onchange="calculate()">
+          <option value="honbu">本部</option>
+          <option value="mana">MANAキッチン主催</option>
+          <option value="manaShibu">MANA支部主催</option>
+          <option value="nintei">認定校主催</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>紹介者の種別</label>
+        <select id="kb-basic-ref" onchange="calculate()">
+          <option value="direct">本部直（紹介者なし）</option>
+          <option value="mana">紹介者：MANAキッチン</option>
+          <option value="shibu">紹介者：支部／MANA支部</option>
+          <option value="nintei">紹介者：認定校</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <!-- 健美食Advance -->
+  <div id="sec-kenb-advance" class="hidden">
+    <div class="step-label">STEP 3 &nbsp; 追加条件</div>
+    <div class="row2">
+      <div class="form-group">
+        <label>主催者</label>
+        <select id="kb-adv-org" onchange="calculate()">
+          <option value="honbu">本部</option>
+          <option value="nintei">認定校</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>紹介者の種別</label>
+        <select id="kb-adv-ref" onchange="calculate()">
+          <option value="direct">本部直（紹介者なし）</option>
+          <option value="mana">紹介者：MANAキッチン</option>
+          <option value="shibu">紹介者：支部／MANA支部</option>
+          <option value="nintei">紹介者：認定校</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <!-- MANAキッチン -->
+  <div id="sec-mana-kitchen" class="hidden">
+    <div class="step-label">STEP 3 &nbsp; 追加条件</div>
+    <div class="form-group">
+      <label>上位支部の状況</label>
+      <select id="mana-jowi" onchange="calculate()">
+        <option value="nashi">上位支部がMANAキッチン or 支部以上のBasic取得者でない（21P）</option>
+        <option value="ari">上位支部がMANAキッチン or 支部以上のBasic取得者（19P）</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- biz加入金 -->
+  <div id="sec-biz-kanyukin" class="hidden">
+    <div class="step-label">STEP 3 &nbsp; 追加条件</div>
+    <div class="row2">
+      <div class="form-group">
+        <label>会員種別</label>
+        <select id="biz-k-type" onchange="onBizKanyukinChange()">
+          <option value="fm">FM</option>
+          <option value="shibu">支部</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>紹介支部がbizですか？</label>
+        <select id="biz-k-biz" onchange="onBizKanyukinChange()">
+          <option value="no">いいえ</option>
+          <option value="yes">はい</option>
+        </select>
+      </div>
+    </div>
+    <div id="biz-k-month-wrap" class="form-group hidden">
+      <label>支払わなくていい月数</label>
+      <input type="number" id="biz-k-months" min="0" max="12" value="0" oninput="calculate()">
+      <p class="note">支部の場合：基本P − 0.3 × 月数</p>
+    </div>
+  </div>
+
+  <!-- biz年間運営費 -->
+  <div id="sec-biz-nenkanen" class="hidden">
+    <div class="step-label">STEP 3 &nbsp; 追加条件</div>
+    <div class="row2">
+      <div class="form-group">
+        <label>会員種別</label>
+        <select id="biz-n-type" onchange="calculate()">
+          <option value="fm">FM</option>
+          <option value="shibu">支部</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>紹介支部がbizですか？</label>
+        <select id="biz-n-biz" onchange="calculate()">
+          <option value="no">いいえ（3.0P）</option>
+          <option value="yes">はい（2.5P）</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <!-- セミナー: 鳥居/中野/食育 -->
+  <div id="sec-sem-tori" class="hidden">
+    <div class="step-label">STEP 3 &nbsp; 追加条件</div>
+    <div class="form-group">
+      <label>売上金額（円）</label>
+      <input type="number" id="sem-tori-sales" min="0" placeholder="例：100000" oninput="calculate()">
+      <p class="note">ポイント＝売上 × 35%　相手側取り分＝売上 × 65%</p>
+    </div>
+  </div>
+
+  <!-- セミナー: 御川 -->
+  <div id="sec-sem-mikawa" class="hidden">
+    <div class="step-label">STEP 3 &nbsp; 追加条件</div>
+    <div class="form-group">
+      <label>受講者数（人）</label>
+      <input type="number" id="sem-mikawa-count" min="1" placeholder="例：5" oninput="calculate()">
+      <p class="note">ポイント＝1.5P × 人数 − 0.5P</p>
+    </div>
+  </div>
+
+  <!-- セミナー: ビジネスステージ -->
+  <div id="sec-sem-bizstage" class="hidden">
+    <div class="step-label">STEP 3 &nbsp; 追加条件</div>
+    <div class="form-group">
+      <label>受講者数（人）</label>
+      <input type="number" id="sem-bizstage-count" min="1" placeholder="例：8" oninput="calculate()">
+      <p class="note">基本1人あたり9,000円</p>
+    </div>
+  </div>
+
+  <!-- 食育講座 -->
+  <div id="sec-shokuiku" class="hidden">
+    <div class="step-label">STEP 3 &nbsp; 追加条件</div>
+    <div class="form-group">
+      <label>コンテンツ数</label>
+      <select id="shokuiku-cnt" onchange="calculate()">
+        <option value="1">1コンテンツ（0.8P）</option>
+        <option value="8">8コンテンツ（6.4P）</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- 岡山校 -->
+  <div id="sec-okayama" class="hidden">
+    <p class="note" style="margin-bottom:12px;">
+      ※ 上位がいる場合：初級通学/紹介=3.9P、初級DVD=3.1P、二・一級=5.5P、支部=25P から下位支部Pを引いた差額
+    </p>
+  </div>
+
+  <!-- エラー -->
+  <div id="error-box" class="error-box hidden"></div>
+
+  <!-- 結果 -->
+  <div id="result-box" class="result-box hidden">
+    <div class="result-label">計算結果</div>
+    <div id="result-referrer" class="result-referrer hidden"></div>
+    <div id="result-points"   class="result-points">-- P</div>
+    <ul  id="result-notes"    class="result-notes"></ul>
+    <button class="btn-reset" onclick="resetAll()">リセット</button>
+  </div>
+
+</div><!-- /card -->
+</div><!-- /container -->
+
+<script>
+// ========== ポイントテーブル（税率10%）==========
+const PT = {
+  shibu: {
+    normal:     { honbu:109.89, lt5:101.75, gte5:97.68,  gte10:93.61,  kaburi:89.61 },
+    noBizStage: { honbu:103.95, lt5:95.81,  gte5:91.74,  gte10:87.67,  kaburi:83.67 },
+    bizSupport: { honbu:112.6,  lt5:104.46, gte5:100.39, gte10:96.32,  kaburi:92.32 },
+    hojin: 181.5,
+  },
+  fm: {
+    tsugaku:    { honbu:5.94, honbu_j:4.94, nashi:2.89, ari:2.59, jusu:2.29, jusu_k:1.99 },
+    shokai:     { honbu:4.94, nashi:2.91, ari:2.61, jusu:2.31, jusu_k:2.01 },
+    dvdweb:     { honbu:5.94, nashi:3.91, ari:3.71, jusu:3.51, jusu_k:3.31 },
+    dvdprimary: { honbu:4.51, nashi:2.98, ari:2.78, jusu:2.58 },
+    nikkyu:     { honbu:13.2,  nashi:9.13, ari:8.83, jusu:8.53, jusu_k:8.23 },
+    ikkyu:      { honbu:29.70, nashi:25.63,ari:25.33,jusu:25.03,jusu_k:24.73 },
+  },
+  primary: { nashi:1.32, ari:0.82 },
+  kenbBasic: {
+    honbu:     { direct:6.93, mana:5.91, shibu:4.9,  nintei:4.9  },
+    mana:      { direct:5.92, mana:4.9,  shibu:3.89, nintei:3.89 },
+    manaShibu: { direct:5.91, mana:4.89, shibu:3.88, nintei:3.88 },
+    nintei:    { direct:4.93, mana:3.91, shibu:2.9,  nintei:3.03 },
+  },
+  kenbAdv: {
+    honbu:  { direct:16.5,  mana:14.47, shibu:13.45, nintei:13.45 },
+    nintei: { direct:15.48, mana:13.45, shibu:12.43, nintei:12.43 },
+  },
+  okayama: { tsugaku:2.04, shokai:2.84, dvd:2.84, nikkyu:7.70, ikkyu:24.20, shibu:74.77 },
+};
+
+// ========== ユーティリティ ==========
+function el(id) { return document.getElementById(id); }
+function show(id) { el(id).classList.remove('hidden'); }
+function hide(id) { el(id).classList.add('hidden'); }
+function val(id)  { return el(id).value; }
+function num(id)  { return parseFloat(el(id).value) || 0; }
+function r2(v)    { return Math.round(v * 100) / 100; }
+
+// ========== 会員データ初期化 ==========
+let selectedMember = null;
+let honbuMode = false;
+
+const SHIBU_TYPES = new Set(['支部','biz支部','BSP支部','支部(休止)','法人支部']);
+
+function getFMStatus(m) {
+  const isShibu = SHIBU_TYPES.has(m.kubun);
+  const N = isShibu ? 1 + m.cn : m.cn;
+  const selfIs10 = isShibu && m.i10;
+  const M = selfIs10 ? 1 + m.cm : m.cm;
+  if (N === 0) return 'honbu';
+  if (N === 1) return 'nashi';
+  if (M === 0) return 'ari';
+  if (M === 1) return 'jusu';
+  return 'jusu_k';
+}
+
+function getShibuBracket(m) {
+  if (m.sc === 0) return 'honbu';
+  if (m.i10) return 'gte10';
+  if (m.sc >= 5) return 'gte5';
+  return 'lt5';
+}
+
+function getShibuKaburi(m) {
+  if (!m.i10) return false;
+  const isShibu = SHIBU_TYPES.has(m.kubun);
+  return isShibu ? m.cm >= 1 : m.cm >= 2;
+}
+
+function unlockConditions() {
+  ['fm-referrer','fm-kaburi','shibu-count','shibu-kaburi'].forEach(id => {
+    const e = el(id); if (e) e.disabled = false;
+  });
+}
+
+window.addEventListener('DOMContentLoaded', () => {
+  if (typeof window.MEMBERS === 'undefined' || !window.MEMBERS) {
+    show('no-data-warn');
+  } else {
+    hide('no-data-warn');
+    const info = el('data-info');
+    info.textContent = 'データ更新日：' + (window.MEMBERS_UPDATED || '不明');
+    show('data-info');
+  }
+});
+
+// ========== 紹介者モード切替 ==========
+function onRefModeChange() {
+  const mode = document.querySelector('input[name="ref-mode"]:checked').value;
+  if (mode === 'honbu') {
+    honbuMode = true;
+    selectedMember = null;
+    el('search-section').classList.add('hidden');
+    el('search-input').value = '';
+    hide('search-results');
+    hide('member-card');
+    unlockConditions();
+    const cat = val('category');
+    if (cat && cat.startsWith('fm_') && el('fm-referrer')) el('fm-referrer').value = 'honbu';
+    if (cat === 'shibu' && el('shibu-count')) el('shibu-count').value = 'honbu';
+    calculate();
+  } else {
+    honbuMode = false;
+    el('search-section').classList.remove('hidden');
+    unlockConditions();
+    calculate();
+  }
+}
+
+// ========== 紹介者検索 ==========
+function onSearch() {
+  const q = el('search-input').value.trim();
+  if (q.length < 2) {
+    hide('search-results');
+    return;
+  }
+  if (!window.MEMBERS) { hide('search-results'); return; }
+
+  const results = searchMembers(q);
+  renderResults(results);
+}
+
+function searchMembers(q) {
+  const results = [];
+  const isId = /^\d/.test(q);
+
+  if (isId) {
+    // IDで直接引く（高速・確実）
+    const qTrimmed = q.trim().replace(/-001$/, '');
+    const directId = qTrimmed + '-001';
+    if (window.MEMBERS[directId]) {
+      results.push({ id: directId, ...window.MEMBERS[directId] });
+      return results;
+    }
+    // 部分一致（前方一致優先）
+    const qPlain = qTrimmed.replace(/^0+/, '');
+    for (const [id, m] of Object.entries(window.MEMBERS)) {
+      if (results.length >= 10) break;
+      const idNum = id.replace(/-001$/, '');
+      const idPlain = idNum.replace(/^0+/, '');
+      if (idNum.startsWith(qTrimmed) || idPlain.startsWith(qPlain)) {
+        results.push({ id, ...m });
+      }
+    }
+  } else {
+    const qn = q.replace(/\s/g, '').toLowerCase();
+    for (const [id, m] of Object.entries(window.MEMBERS)) {
+      if (results.length >= 10) break;
+      const namePlain = (m.n || '').replace(/\s/g, '').toLowerCase();
+      const kanaPlain = (m.k || '').replace(/\s/g, '').toLowerCase();
+      if (namePlain.includes(qn) || kanaPlain.includes(qn)) {
+        results.push({ id, ...m });
+      }
+    }
+  }
+  return results;
+}
+
+function renderResults(results) {
+  const div = el('search-results');
+  if (results.length === 0) {
+    div.innerHTML = '<div class="search-no-result">該当なし</div>';
+    show('search-results');
+    return;
+  }
+  div.innerHTML = results.map(m => {
+    const cls = SHIBU_TYPES.has(m.t) ? 'shibu' : 'other';
+    return `<div class="search-item" onclick="selectMember('${m.id}')">
+      <span class="item-name">${m.n}</span>
+      <span class="item-kubun ${cls}">${m.t}</span>
+    </div>`;
+  }).join('');
+  show('search-results');
+}
+
+function selectMember(id) {
+  if (!window.MEMBERS || !window.MEMBERS[id]) return;
+  const m = window.MEMBERS[id];
+  selectedMember = { id, name:m.n, kana:m.k, kubun:m.t,
+                     sc:m.sc, cn:m.cn, cm:m.cm, en:m.en, i10:m.i10 };
+  honbuMode = false;
+  el('search-input').value = m.n;
+  hide('search-results');
+  showMemberCard();
+  autoPopulate();
+  calculate();
+}
+
+function showMemberCard() {
+  const m = selectedMember;
+  if (!m) return;
+  el('member-card-name').textContent = m.name + '（' + m.kubun + '）';
+
+  const sub = el('member-card-sub');
+  const isShibu = SHIBU_TYPES.has(m.kubun);
+  if (isShibu) {
+    const fmLabels = { honbu:'本部直', nashi:'上位なし', ari:'上位あり', jusu:'10支部', jusu_k:'10支部かぶり' };
+    const fm = getFMStatus(m);
+    sub.className = 'member-card-sub';
+    sub.innerHTML = '支部数：<strong>' + m.sc + '支部</strong>　FM区分：<strong>' + (fmLabels[fm] || fm) + '</strong>';
+  } else if (m.en) {
+    sub.className = 'member-card-sub warn';
+    sub.innerHTML = 'コミッション対象外 → 上位支部：<strong>' + m.en + '</strong>（' + m.sc + '支部）';
+  } else {
+    sub.className = 'member-card-sub warn';
+    sub.textContent = '上位支部が見つかりません（本部直として扱います）';
+  }
+  show('member-card');
+}
+
+function autoPopulate() {
+  if (!selectedMember) return;
+  const cat = val('category');
+  const m = selectedMember;
+
+  // FM検定: fm-referrerを自動設定してロック
+  if (cat && cat.startsWith('fm_') && cat !== 'fm_re') {
+    const fm = getFMStatus(m);
+    const sel = el('fm-referrer');
+    if (sel) {
+      sel.value = fm === 'jusu_k' ? 'jusu' : fm;
+      sel.disabled = true;
+      onFmReferrerChange();
+      if (fm === 'jusu_k') {
+        el('fm-kaburi').value = 'yes';
+        el('fm-kaburi').disabled = true;
+        calculate();
+      } else if (fm === 'jusu') {
+        el('fm-kaburi').value = 'no';
+        el('fm-kaburi').disabled = true;
+      }
+    }
+  }
+
+  // 支部加盟: shibu-countを自動設定してロック
+  if (cat === 'shibu') {
+    const bracket = getShibuBracket(m);
+    const kaburi  = getShibuKaburi(m);
+    const sel = el('shibu-count');
+    if (sel) {
+      sel.value = bracket;
+      sel.disabled = true;
+      onShibuCountChange();
+      if (bracket === 'gte10') {
+        el('shibu-kaburi').value = kaburi ? 'yes' : 'no';
+        el('shibu-kaburi').disabled = true;
+        calculate();
+      }
+    }
+  }
+}
+
+function clearSearch() {
+  el('search-input').value = '';
+  hide('search-results');
+}
+
+function clearMember() {
+  selectedMember = null;
+  honbuMode = false;
+  el('ref-mode-iru').checked = true;
+  el('search-section').classList.remove('hidden');
+  el('search-input').value = '';
+  hide('search-results');
+  hide('member-card');
+  unlockConditions();
+  calculate();
+}
+
+// クリック外で検索結果を閉じる
+document.addEventListener('click', e => {
+  if (!e.target.closest('.search-wrap') && !e.target.closest('.search-results')) {
+    hide('search-results');
+  }
+});
+
+// ========== カテゴリ変更 ==========
+const ALL_SECS = [
+  'sec-shibu','sec-fm','sec-primary','sec-kenb-basic','sec-kenb-advance',
+  'sec-mana-kitchen','sec-biz-kanyukin','sec-biz-nenkanen',
+  'sec-sem-tori','sec-sem-mikawa','sec-sem-bizstage','sec-shokuiku','sec-okayama',
+];
+
+function onCategoryChange() {
+  ALL_SECS.forEach(s => hide(s));
+  hide('result-box');
+  hide('error-box');
+
+  const cat = val('category');
+  if (!cat) return;
+
+  // FM系の初期化
+  ['fm-kaburi-wrap','fm-jokyu-wrap','fm-bizexpert-wrap','fm-jishu-wrap',
+   'fm-okayama-wrap','fm-referrer-wrap'].forEach(hide);
+
+  const map = {
+    shibu:'sec-shibu', primary:'sec-primary',
+    kenb_basic:'sec-kenb-basic', kenb_advance:'sec-kenb-advance',
+    mana_kitchen:'sec-mana-kitchen', biz_kanyukin:'sec-biz-kanyukin',
+    biz_nenkanen:'sec-biz-nenkanen', sem_tori:'sec-sem-tori',
+    sem_mikawa:'sec-sem-mikawa', sem_bizstage:'sec-sem-bizstage',
+    shokuiku:'sec-shokuiku',
+  };
+
+  if (cat.startsWith('fm_'))         { show('sec-fm'); setupFm(cat); }
+  else if (cat.startsWith('okayama_')){ show('sec-okayama'); }
+  else if (map[cat])                  { show(map[cat]); }
+
+  unlockConditions();
+  autoPopulate();
+  calculate();
+}
+
+function setupFm(cat) {
+  if (cat === 'fm_re') {
+    show('fm-jishu-wrap');
+    return;
+  }
+  show('fm-referrer-wrap');
+  show('fm-bizexpert-wrap');
+  if (cat === 'fm_nikkyu'  || cat === 'fm_ikkyu')  { show('fm-okayama-wrap'); hide('fm-bizexpert-wrap'); }
+  onFmReferrerChange();
+}
+
+// ========== 支部 ==========
+function onShibuCountChange() {
+  val('shibu-count') === 'gte10' ? show('shibu-kaburi-wrap') : hide('shibu-kaburi-wrap');
+  calculate();
+}
+function onShimamotoChange() {
+  val('shibu-shimamoto') === 'yes' ? show('shibu-2000p-wrap') : hide('shibu-2000p-wrap');
+  calculate();
+}
+
+// ========== FM ==========
+function onFmReferrerChange() {
+  val('fm-referrer') === 'jusu' ? show('fm-kaburi-wrap') : hide('fm-kaburi-wrap');
+  calculate();
+}
+
+// ========== biz ==========
+function onBizKanyukinChange() {
+  val('biz-k-type') === 'shibu' ? show('biz-k-month-wrap') : hide('biz-k-month-wrap');
+  calculate();
+}
+
+// ========== 計算メイン ==========
+function calculate() {
+  const cat = val('category');
+  if (!cat) return;
+
+  let pts = null, notes = [], customText = null;
+
+  try {
+    if (cat === 'shibu') {
+      const plan    = val('shibu-plan');
+      const count   = val('shibu-count');
+      const kaburi  = val('shibu-kaburi');
+      const shima   = val('shibu-shimamoto');
+      const p2000   = val('shibu-2000p');
+      const gakko   = val('shibu-gakko');
+      if (plan === 'hojin') {
+        pts = PT.shibu.hojin;
+      } else {
+        const tbl = PT.shibu[plan];
+        pts = count === 'gte10' ? (kaburi === 'yes' ? tbl.kaburi : tbl.gte10) : tbl[count];
+      }
+      if (shima === 'yes') {
+        const m = p2000 === 'yes' ? 8 : 6;
+        pts -= m; notes.push(`嶋中・遠藤さん在籍のため -${m}P`);
+      }
+      if (gakko === 'yes') { pts -= 25; notes.push('学校のため -25P'); }
+
+    } else if (cat.startsWith('fm_')) {
+      const type  = cat.replace('fm_', '');
+      const ref   = val('fm-referrer');
+      const kaburi= val('fm-kaburi');
+      const jokyu = val('fm-jokyu');
+      const bize  = val('fm-bizexpert');
+      const jishu = val('fm-jishu');
+      const okaya = val('fm-okayama');
+
+      if (type === 're') {
+        pts = jishu === 'yes' ? 0.25 : 0;
+        notes.push(jishu === 'yes' ? '自主開催のため 0.25P' : '再受講（本部直）0P');
+      } else {
+        const tbl = PT.fm[type];
+        const isK = ref === 'jusu' && kaburi === 'yes';
+        const isJ = jokyu === 'yes';
+
+        if (type === 'shokai') {
+          pts = isK ? (tbl.jusu_k ?? tbl.jusu) : (tbl[ref] ?? tbl.honbu);
+        } else if (type === 'tsugaku') {
+          pts = isK ? (tbl.jusu_k ?? tbl.jusu) : (tbl[ref] ?? tbl.honbu);
+        } else {
+          pts = isK ? (tbl.jusu_k ?? tbl.jusu) : (tbl[ref] ?? tbl.honbu);
+        }
+
+        if (bize === 'yes' && !['nikkyu','ikkyu'].includes(type)) {
+          pts -= 1; notes.push('ビジネスエキスパートコースのため -1P');
+        }
+        if (okaya === 'yes' && (type === 'nikkyu' || type === 'ikkyu')) {
+          pts -= 5.5; notes.push('岡山校のため -5.5P');
+        }
+        if (type === 'nikkyu' || type === 'ikkyu') {
+          notes.push(['二級・一級は当月合計5名以上が条件', true]);
+        }
+      }
+
+    } else if (cat === 'primary') {
+      pts = PT.primary[val('primary-ref')];
+
+    } else if (cat === 'kenb_basic') {
+      pts = PT.kenbBasic[val('kb-basic-org')][val('kb-basic-ref')];
+      notes.push('上級指導士の動員があった場合 -0.5P（確認要）');
+
+    } else if (cat === 'kenb_advance') {
+      pts = PT.kenbAdv[val('kb-adv-org')][val('kb-adv-ref')];
+      notes.push('上級指導士の動員があった場合 -0.5P（確認要）');
+
+    } else if (cat === 'mana_kitchen') {
+      pts = val('mana-jowi') === 'ari' ? 19 : 21;
+
+    } else if (cat === 'biz_kanyukin') {
+      const type = val('biz-k-type');
+      const biz  = val('biz-k-biz') === 'yes';
+      if (type === 'fm') {
+        pts = biz ? 20 : 26;
+      } else {
+        const base = biz ? 2.5 : 3.0;
+        const mo   = num('biz-k-months');
+        pts = base - 0.3 * mo;
+        if (mo > 0) notes.push(`支払免除 ${mo}ヶ月 → -${r2(0.3*mo)}P`);
+      }
+
+    } else if (cat === 'biz_nenkanen') {
+      pts = val('biz-n-biz') === 'yes' ? 2.5 : 3.0;
+
+    } else if (cat === 'sem_tori') {
+      const s = num('sem-tori-sales');
+      if (!s) { showError('売上金額を入力してください'); return; }
+      pts = r2(s * 0.35);
+      notes.push(`売上 ${s.toLocaleString()}円 × 35%`);
+      notes.push(`相手側取り分：${Math.round(s * 0.65).toLocaleString()}円`);
+
+    } else if (cat === 'sem_mikawa') {
+      const c = num('sem-mikawa-count');
+      if (!c) { showError('受講者数を入力してください'); return; }
+      pts = r2(1.5 * c - 0.5);
+      notes.push(`1.5P × ${c}名 − 0.5P`);
+
+    } else if (cat === 'sem_bizstage') {
+      const c = num('sem-bizstage-count');
+      if (!c) { showError('受講者数を入力してください'); return; }
+      customText = `${(9000*c).toLocaleString()} 円`;
+      notes.push(`基本 9,000円 × ${c}名`);
+      notes.push('厳密計算：（59,400 − 5,000）÷ 2 ÷ 3 × 人数');
+
+    } else if (cat === 'shokuiku') {
+      pts = val('shokuiku-cnt') === '1' ? 0.8 : 6.4;
+
+    } else if (cat.startsWith('okayama_')) {
+      pts = PT.okayama[cat.replace('okayama_', '')];
+      notes.push('上位がいる場合は差額計算が必要（別途確認）');
+    }
+
+    hideError();
+    showResult(pts, customText, notes);
+  } catch(e) {
+    showError('エラー: ' + e.message);
+  }
+}
+
+// ========== 結果表示 ==========
+function showResult(pts, customText, notes) {
+  // 紹介者表示
+  const refEl = el('result-referrer');
+  if (honbuMode) {
+    refEl.textContent = '紹介者：本部直';
+    show('result-referrer');
+  } else if (selectedMember) {
+    const isShibu = SHIBU_TYPES.has(selectedMember.kubun);
+    if (isShibu) {
+      refEl.textContent = '紹介者：' + selectedMember.name + '（' + selectedMember.sc + '支部）';
+    } else if (selectedMember.en) {
+      refEl.textContent = '紹介者：' + selectedMember.name + ' → 上位：' + selectedMember.en + '（' + selectedMember.sc + '支部）';
+    } else {
+      refEl.textContent = '紹介者：' + selectedMember.name + '（本部直扱い）';
+    }
+    show('result-referrer');
+  } else {
+    hide('result-referrer');
+  }
+
+  el('result-points').textContent = customText ? customText
+    : (pts !== null && !isNaN(pts)) ? r2(pts) + ' P' : '-- P';
+
+  const ul = el('result-notes');
+  ul.innerHTML = '';
+  notes.forEach(n => {
+    const isWarn = Array.isArray(n);
+    const text = isWarn ? n[0] : n;
+    const li = document.createElement('li');
+    li.textContent = text;
+    if (isWarn) li.className = 'warn';
+    ul.appendChild(li);
+  });
+
+  show('result-box');
+}
+
+function showError(msg) {
+  el('error-box').textContent = msg;
+  show('error-box');
+  hide('result-box');
+}
+function hideError() { hide('error-box'); }
+
+// ========== リセット ==========
+function resetAll() {
+  el('category').value = '';
+  el('ref-mode-iru').checked = true;
+  honbuMode = false;
+  selectedMember = null;
+  el('search-section').classList.remove('hidden');
+  el('search-input').value = '';
+  hide('search-results');
+  hide('member-card');
+  unlockConditions();
+  onCategoryChange();
+}
+</script>
+</body>
+</html>
