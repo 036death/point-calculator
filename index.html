@@ -588,7 +588,7 @@ function getFMStatus(m) {
   const selfIs10 = isShibu && m.i10;
   const M = selfIs10 ? 1 + m.cm : m.cm;
   if (N === 0) return 'honbu';
-  if (N === 1) return 'nashi';
+  if (N === 1 && M === 0) return 'nashi';
   if (M === 0) return 'ari';
   if (M === 1) return 'jusu';
   return 'jusu_k';
@@ -936,6 +936,9 @@ function calculate() {
           pts = isK ? (tbl.jusu_k ?? tbl.jusu) : (tbl[ref] ?? tbl.honbu);
         }
 
+        if (selectedMember && selectedMember.name === '廣瀬 ちえ' && type === 'tsugaku') {
+          pts -= 0.25; notes.push('廣瀬ちえ特別金（2,500円）のため -0.25P');
+        }
         if (bize === 'yes' && !['nikkyu','ikkyu'].includes(type)) {
           pts -= 1; notes.push('ビジネスエキスパートコースのため -1P');
         }
