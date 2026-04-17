@@ -737,7 +737,8 @@ function showMemberCard() {
     const fmLabels = { honbu:'本部直', nashi:'上位なし', ari:'上位あり', jusu:'10支部', jusu_k:'10支部かぶり' };
     const fm = getFMStatus(m);
     sub.className = 'member-card-sub';
-    sub.innerHTML = '支部数：<strong>' + m.sc + '支部</strong>　FM区分：<strong>' + (fmLabels[fm] || fm) + '</strong>';
+    const saText = m.sa > 0 ? '（全体：' + (m.sc + m.sa) + '支部）' : '';
+    sub.innerHTML = '支部数：<strong>' + m.sc + '支部</strong>' + saText + '　FM区分：<strong>' + (fmLabels[fm] || fm) + '</strong>';
   } else if (m.en) {
     sub.className = 'member-card-sub warn';
     sub.innerHTML = 'コミッション対象外 → 上位支部：<strong>' + m.en + '</strong>（' + m.sc + '支部）';
