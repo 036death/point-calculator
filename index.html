@@ -717,7 +717,7 @@ function selectMember(id) {
   if (!window.MEMBERS || !window.MEMBERS[id]) return;
   const m = window.MEMBERS[id];
   selectedMember = { id, name:m.n, kana:m.k, kubun:m.t,
-                     sc:m.sc, cn:m.cn, cm:m.cm, en:m.en, i10:m.i10 };
+                     sc:m.sc, sa:m.sa, cn:m.cn, cm:m.cm, en:m.en, i10:m.i10, sl:m.sl };
   honbuMode = false;
   el('search-input').value = m.n;
   hide('search-results');
