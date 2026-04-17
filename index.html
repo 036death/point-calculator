@@ -608,7 +608,7 @@ function getShibuKaburi(m) {
 }
 
 function unlockConditions() {
-  ['fm-referrer','fm-kaburi','shibu-count','shibu-kaburi'].forEach(id => {
+  ['fm-referrer','fm-kaburi','shibu-count','shibu-kaburi','kb-basic-ref','kb-adv-ref'].forEach(id => {
     const e = el(id); if (e) e.disabled = false;
   });
 }
@@ -638,6 +638,8 @@ function onRefModeChange() {
     const cat = val('category');
     if (cat && cat.startsWith('fm_') && el('fm-referrer')) el('fm-referrer').value = 'honbu';
     if (cat === 'shibu' && el('shibu-count')) el('shibu-count').value = 'honbu';
+    if (cat === 'kenb_basic' && el('kb-basic-ref')) { el('kb-basic-ref').value = 'direct'; el('kb-basic-ref').disabled = true; }
+    if (cat === 'kenb_advance' && el('kb-adv-ref')) { el('kb-adv-ref').value = 'direct'; el('kb-adv-ref').disabled = true; }
     calculate();
   } else {
     honbuMode = false;
@@ -717,7 +719,7 @@ function selectMember(id) {
   if (!window.MEMBERS || !window.MEMBERS[id]) return;
   const m = window.MEMBERS[id];
   selectedMember = { id, name:m.n, kana:m.k, kubun:m.t,
-                     sc:m.sc, sa:m.sa, cn:m.cn, cm:m.cm, en:m.en, i10:m.i10, sl:m.sl };
+                     sc:m.sc, sa:m.sa, cn:m.cn, cm:m.cm, en:m.en, i10:m.i10, sl:m.sl, bt:m.bt };
   honbuMode = false;
   el('search-input').value = m.n;
   hide('search-results');
@@ -773,6 +775,17 @@ function autoPopulate() {
         el('fm-kaburi').value = 'no';
         el('fm-kaburi').disabled = true;
       }
+    }
+  }
+
+  // Basic / Advance: 紹介者の種別を自動判定してロック
+  if (cat === 'kenb_basic' || cat === 'kenb_advance') {
+    const bt = m.bt || 'shibu';
+    const sel = el(cat === 'kenb_basic' ? 'kb-basic-ref' : 'kb-adv-ref');
+    if (sel) {
+      sel.value = bt;
+      sel.disabled = true;
+      calculate();
     }
   }
 
