@@ -738,7 +738,8 @@ function showMemberCard() {
     const fm = getFMStatus(m);
     sub.className = 'member-card-sub';
     const saText = m.sa > 0 ? '（全体：' + (m.sc + m.sa) + '支部）' : '';
-    sub.innerHTML = '支部数：<strong>' + m.sc + '支部</strong>' + saText + '　FM区分：<strong>' + (fmLabels[fm] || fm) + '</strong>';
+    const slText = (m.sl && m.sl.length > 0) ? '<br>10支部達成：' + m.sl.join('、') : '';
+    sub.innerHTML = '支部数：<strong>' + m.sc + '支部</strong>' + saText + '　FM区分：<strong>' + (fmLabels[fm] || fm) + '</strong>' + slText;
   } else if (m.en) {
     sub.className = 'member-card-sub warn';
     sub.innerHTML = 'コミッション対象外 → 上位支部：<strong>' + m.en + '</strong>（' + m.sc + '支部）';
