@@ -216,8 +216,8 @@ select:disabled {
         <option value="fm_dvdweb">初級検定（WEB）</option>
         <option value="fm_dvdprimary">FM検定 ｜ 初級（DVD・プライマリー受講済み）</option>
         <option value="fm_re">初級検定（再受講）</option>
-        <option value="fm_nikkyu">FM検定 ｜ 二級</option>
-        <option value="fm_ikkyu">FM検定 ｜ 一級</option>
+        <option value="fm_nikkyu">二級検定</option>
+        <option value="fm_ikkyu">一級検定</option>
       </optgroup>
       <optgroup label="プライマリー">
         <option value="primary">プライマリー</option>
@@ -324,6 +324,14 @@ select:disabled {
         <option value="yes">あり</option>
       </select>
     </div>
+    <div id="fm-jusu-ach-wrap" class="form-group hidden">
+      <label>上位支部で5名達成者は何名？</label>
+      <select id="fm-jusu-ach" onchange="calculate()">
+        <option value="0">0人（上位未達成）</option>
+        <option value="1">1人（-0.3P）</option>
+        <option value="2">2人（-0.6P）</option>
+      </select>
+    </div>
     <div id="fm-jokyu-wrap" class="form-group hidden">
       <label>上級講師（または他支部）が担当ですか？</label>
       <select id="fm-jokyu" onchange="calculate()">
@@ -345,13 +353,8 @@ select:disabled {
         <option value="yes">はい（0.25P）</option>
       </select>
     </div>
-    <div id="fm-okayama-wrap" class="form-group hidden">
-      <label>岡山校ですか？</label>
-      <select id="fm-okayama" onchange="calculate()">
-        <option value="no">いいえ</option>
-        <option value="yes">はい（-5.5P）</option>
-      </select>
-    </div>
+    <!-- 岡山校は紹介者が松原徹志（ID 76780）の場合のみ自動適用 -->
+    <input type="hidden" id="fm-okayama" value="no">
   </div>
 
   <!-- プライマリー -->
@@ -861,8 +864,8 @@ function onCategoryChange() {
   if (!cat) return;
 
   // FM系の初期化
-  ['fm-kaburi-wrap','fm-jokyu-wrap','fm-bizexpert-wrap','fm-jishu-wrap',
-   'fm-okayama-wrap','fm-referrer-wrap'].forEach(hide);
+  ['fm-kaburi-wrap','fm-jusu-ach-wrap','fm-jokyu-wrap','fm-bizexpert-wrap','fm-jishu-wrap',
+   'fm-referrer-wrap'].forEach(hide);
 
   const map = {
     shibu:'sec-shibu', primary:'sec-primary',
@@ -889,7 +892,13 @@ function setupFm(cat) {
   }
   show('fm-referrer-wrap');
   show('fm-bizexpert-wrap');
-  if (cat === 'fm_nikkyu'  || cat === 'fm_ikkyu')  { show('fm-okayama-wrap'); hide('fm-bizexpert-wrap'); }
+  if (cat === 'fm_nikkyu'  || cat === 'fm_ikkyu')  { hide('fm-bizexpert-wrap'); }
+  // 岡山校判定：紹介者 = 松原徹志（ID 76780）なら自動 yes
+  const okayamaHidden = el('fm-okayama');
+  if (okayamaHidden) {
+    const isOka = !!(selectedMember && selectedMember.id && selectedMember.id.indexOf('0000076780') === 0);
+    okayamaHidden.value = isOka ? 'yes' : 'no';
+  }
   onFmReferrerChange();
 }
 
@@ -905,7 +914,17 @@ function onShimamotoChange() {
 
 // ========== FM ==========
 function onFmReferrerChange() {
-  val('fm-referrer') === 'jusu' ? show('fm-kaburi-wrap') : hide('fm-kaburi-wrap');
+  const cat = val('category');
+  const isNiIk = (cat === 'fm_nikkyu' || cat === 'fm_ikkyu');
+  const isJusu = val('fm-referrer') === 'jusu';
+  if (isNiIk) {
+    // 二級/一級: 10支部かぶりは使わず、上位5名達成者の数を聞く
+    hide('fm-kaburi-wrap');
+    isJusu ? show('fm-jusu-ach-wrap') : hide('fm-jusu-ach-wrap');
+  } else {
+    hide('fm-jusu-ach-wrap');
+    isJusu ? show('fm-kaburi-wrap') : hide('fm-kaburi-wrap');
+  }
   calculate();
 }
 
@@ -957,11 +976,16 @@ function calculate() {
       } else {
         const tbl = PT.fm[type];
         const isK = ref === 'jusu' && kaburi === 'yes';
-        const isJ = jokyu === 'yes';
+        const isNiIk = (type === 'nikkyu' || type === 'ikkyu');
 
-        if (type === 'shokai') {
-          pts = isK ? (tbl.jusu_k ?? tbl.jusu) : (tbl[ref] ?? tbl.honbu);
-        } else if (type === 'tsugaku') {
+        if (isNiIk && ref === 'jusu') {
+          // 10支部達成者が紹介者 ⇒ 基本は ari 値（8.83 / 25.33）。
+          // 上位支部で5名達成者がいれば -0.3P/人（3,000円ずつ上位に流れる）
+          const ach = parseInt(val('fm-jusu-ach') || '0', 10);
+          pts = r2(tbl.ari - 0.3 * ach);
+          if (ach > 0) notes.push(`上位支部5名達成者 ${ach}人 → -${r2(0.3*ach)}P（運営金が上位に流れる）`);
+          else notes.push('上位支部で5名達成者なし（10支部運営金なし）');
+        } else if (type === 'shokai' || type === 'tsugaku') {
           pts = isK ? (tbl.jusu_k ?? tbl.jusu) : (tbl[ref] ?? tbl.honbu);
         } else {
           pts = isK ? (tbl.jusu_k ?? tbl.jusu) : (tbl[ref] ?? tbl.honbu);
@@ -973,10 +997,10 @@ function calculate() {
         if (bize === 'yes' && !['nikkyu','ikkyu'].includes(type)) {
           pts -= 1; notes.push('ビジネスエキスパートコースのため -1P');
         }
-        if (okaya === 'yes' && (type === 'nikkyu' || type === 'ikkyu')) {
-          pts -= 5.5; notes.push('岡山校のため -5.5P');
+        if (okaya === 'yes' && isNiIk) {
+          pts -= 5.5; notes.push('岡山校（紹介者：松原徹志）のため -5.5P');
         }
-        if (type === 'nikkyu' || type === 'ikkyu') {
+        if (isNiIk) {
           notes.push(['二級・一級は当月合計5名以上が条件', true]);
         }
       }
