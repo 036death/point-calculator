@@ -772,9 +772,17 @@ function showMemberCard() {
 }
 
 function autoPopulate() {
-  if (!selectedMember) return;
   const cat = val('category');
   const m = selectedMember;
+
+  // 岡山校判定：紹介者 = 松原徹志（ID 76780）なら yes、それ以外は no
+  const okayamaHidden = el('fm-okayama');
+  if (okayamaHidden) {
+    const isOka = !!(m && m.id && m.id.indexOf('0000076780') === 0);
+    okayamaHidden.value = isOka ? 'yes' : 'no';
+  }
+
+  if (!m) { calculate(); return; }
 
   // FM検定: fm-referrerを自動設定してロック
   if (cat && cat.startsWith('fm_') && cat !== 'fm_re') {
@@ -893,12 +901,6 @@ function setupFm(cat) {
   show('fm-referrer-wrap');
   show('fm-bizexpert-wrap');
   if (cat === 'fm_nikkyu'  || cat === 'fm_ikkyu')  { hide('fm-bizexpert-wrap'); }
-  // 岡山校判定：紹介者 = 松原徹志（ID 76780）なら自動 yes
-  const okayamaHidden = el('fm-okayama');
-  if (okayamaHidden) {
-    const isOka = !!(selectedMember && selectedMember.id && selectedMember.id.indexOf('0000076780') === 0);
-    okayamaHidden.value = isOka ? 'yes' : 'no';
-  }
   onFmReferrerChange();
 }
 
