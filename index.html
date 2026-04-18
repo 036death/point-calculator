@@ -389,6 +389,13 @@ select:disabled {
         </select>
       </div>
     </div>
+    <div class="form-group">
+      <label>上級指導士の動員（三山／原／顧問）</label>
+      <select id="kb-basic-douin" onchange="calculate()">
+        <option value="nashi">動員なし</option>
+        <option value="ari">動員あり（-0.5P）</option>
+      </select>
+    </div>
   </div>
 
   <!-- 健美食Advance -->
@@ -411,6 +418,13 @@ select:disabled {
           <option value="nintei">紹介者：認定校</option>
         </select>
       </div>
+    </div>
+    <div class="form-group">
+      <label>上級指導士の動員（三山／原／顧問）</label>
+      <select id="kb-adv-douin" onchange="calculate()">
+        <option value="nashi">動員なし</option>
+        <option value="ari">動員あり（-0.5P）</option>
+      </select>
     </div>
   </div>
 
@@ -972,11 +986,17 @@ function calculate() {
 
     } else if (cat === 'kenb_basic') {
       pts = PT.kenbBasic[val('kb-basic-org')][val('kb-basic-ref')];
-      notes.push('上級指導士の動員があった場合 -0.5P（確認要）');
+      if (val('kb-basic-douin') === 'ari') {
+        pts = r2(pts - 0.5);
+        notes.push('上級指導士の動員あり -0.5P');
+      }
 
     } else if (cat === 'kenb_advance') {
       pts = PT.kenbAdv[val('kb-adv-org')][val('kb-adv-ref')];
-      notes.push('上級指導士の動員があった場合 -0.5P（確認要）');
+      if (val('kb-adv-douin') === 'ari') {
+        pts = r2(pts - 0.5);
+        notes.push('上級指導士の動員あり -0.5P');
+      }
 
     } else if (cat === 'mana_kitchen') {
       pts = val('mana-jowi') === 'ari' ? 19 : 21;
