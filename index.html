@@ -599,10 +599,28 @@ let honbuMode = false;
 
 const SHIBU_TYPES = new Set(['支部','biz支部','BSP支部','支部(休止)','法人支部']);
 
+// 岡山校メンバー：本人を10支部達成扱いにする
+const OKAYAMA_IDS = new Set([
+  '0000076780-001', // 松原 徹志
+  '0000076790-001', // 薬師寺 瞳
+  '0000076830-001', // 滝本 麻衣
+  '0000076840-001', // 大原 はる香
+  '0000076850-001', // 中西 健吾
+  '0000076870-001', // 石原 沙霧
+]);
+
+function isOkayamaMember(m) {
+  return !!(m && m.id && OKAYAMA_IDS.has(m.id));
+}
+
+function effectiveI10(m) {
+  return !!(m && (m.i10 || isOkayamaMember(m)));
+}
+
 function getFMStatus(m) {
   const isShibu = SHIBU_TYPES.has(m.kubun);
   const N = isShibu ? 1 + m.cn : m.cn;
-  const selfIs10 = isShibu && m.i10;
+  const selfIs10 = isShibu && effectiveI10(m);
   const M = selfIs10 ? 1 + m.cm : m.cm;
   if (N === 0) return 'honbu';
   if (N === 1 && M === 0) return 'nashi';
@@ -613,15 +631,45 @@ function getFMStatus(m) {
 
 function getShibuBracket(m) {
   if (m.sc === 0) return 'honbu';
-  if (m.i10) return 'gte10';
+  if (effectiveI10(m)) return 'gte10';
   if (m.sc >= 5) return 'gte5';
   return 'lt5';
 }
 
 function getShibuKaburi(m) {
-  if (!m.i10) return false;
+  if (!effectiveI10(m)) return false;
   const isShibu = SHIBU_TYPES.has(m.kubun);
   return isShibu ? m.cm >= 1 : m.cm >= 2;
+}
+
+// 紹介者の上位チェーンに岡山校メンバーがいるか
+function chainHasOkayama(m) {
+  if (!m) return false;
+  if (isOkayamaMember(m)) return true;
+  if (!window.MEMBERS) return false;
+  const normName = s => String(s || '').replace(/\s+/g,'').replace(/様/g,'');
+  const visited = new Set([m.id]);
+  let curEn = m.en;
+  let depth = 0;
+  while (curEn && depth < 20) {
+    const target = normName(curEn);
+    if (!target) break;
+    let parent = null;
+    for (const [pid, pm] of Object.entries(window.MEMBERS)) {
+      if (visited.has(pid)) continue;
+      if (normName(pm.n) === target) {
+        if (!parent || SHIBU_TYPES.has(pm.t)) parent = { id: pid, ...pm };
+        if (SHIBU_TYPES.has(pm.t)) break;
+      }
+    }
+    if (!parent) break;
+    if (OKAYAMA_IDS.has(parent.id)) return true;
+    visited.add(parent.id);
+    if (SHIBU_TYPES.has(parent.t)) return false;
+    curEn = parent.en;
+    depth++;
+  }
+  return false;
 }
 
 function unlockConditions() {
@@ -758,8 +806,10 @@ function showMemberCard() {
     sub.className = 'member-card-sub';
     const saText = m.sa > 0 ? '（全体：' + (m.sc + m.sa) + '支部）' : '';
     const hasSl = m.sl && m.sl.length > 0;
-    const slText = hasSl ? '<br>10支部達成：' + m.sl.join('、') : '';
-    const fmText = hasSl ? '' : '　FM区分：<strong>' + (fmLabels[fm] || fm) + '</strong>';
+    const slText = hasSl ? '<br>10支部達成：' + m.sl.join('、')
+                         : (isOkayamaMember(m) ? '<br>10支部達成：岡山校' : '');
+    const showSl = hasSl || isOkayamaMember(m);
+    const fmText = showSl ? '' : '　FM区分：<strong>' + (fmLabels[fm] || fm) + '</strong>';
     sub.innerHTML = '支部数：<strong>' + m.sc + '支部</strong>' + saText + fmText + slText;
   } else if (m.en) {
     sub.className = 'member-card-sub warn';
@@ -775,10 +825,10 @@ function autoPopulate() {
   const cat = val('category');
   const m = selectedMember;
 
-  // 岡山校判定：紹介者 = 松原徹志（ID 76780）なら yes、それ以外は no
+  // 岡山校判定：紹介者本人または上位チェーンに岡山校メンバー（松原徹志ら6名）がいれば yes
   const okayamaHidden = el('fm-okayama');
   if (okayamaHidden) {
-    const isOka = !!(m && m.id && m.id.indexOf('0000076780') === 0);
+    const isOka = chainHasOkayama(m);
     okayamaHidden.value = isOka ? 'yes' : 'no';
   }
 
@@ -1000,7 +1050,7 @@ function calculate() {
           pts -= 1; notes.push('ビジネスエキスパートコースのため -1P');
         }
         if (okaya === 'yes' && isNiIk) {
-          pts -= 5.5; notes.push('岡山校（紹介者：松原徹志）のため -5.5P');
+          pts -= 5.5; notes.push('岡山校（紹介者チェーンに岡山校メンバー）のため -5.5P');
         }
         if (isNiIk) {
           notes.push(['二級・一級は当月合計5名以上が条件', true]);
